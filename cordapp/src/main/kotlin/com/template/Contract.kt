@@ -27,7 +27,7 @@ class DecisionContract: Contract {
             "There are at least 3 people." using (signer.children.size > 2)
 
             // Rounded up, at minimum 50% of the participants must sign
-            "The threshold is minimum 50% of participants." using (signer.threshold >= Math.ceil(signer.children.size.toDouble() / 2).toInt())
+            "The threshold is minimum 50% of participants." using (Math.ceil(signer.children.size.toDouble() / 2).toInt() >= signer.threshold)
             "There is only one output." using (tx.outputStates.size == 1)
             "The output is of type FairDecision." using (tx.outputsOfType<FairDecision>().size == 1)
             val output = tx.outRefsOfType<FairDecision>().single().state.data
@@ -35,6 +35,11 @@ class DecisionContract: Contract {
                 CompositeKey.NodeAndWeight(it.owningKey, 1)
             }
             "Every party has an equal weight." using (signer.children.containsAll(expectedNodesAndWeights))
+
+            // TODO: How do you check that the participants signing the key actually meet the threshold???
+            val participantKeys = output.parties.map { it -> it.owningKey }
+            "The composite key is fulfilled by the participants" using (signer.isFulfilledBy(participantKeys))
+
         }
     }
 }

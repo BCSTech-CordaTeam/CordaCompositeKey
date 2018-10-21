@@ -16,26 +16,29 @@ import java.security.PublicKey
 
 @InitiatingFlow
 @StartableByRPC
-class CreateDecision(val decision: String, val otherParties: MutableList<Party>): FlowLogic<FairDecision>() {
+class CreateDecision(val decision: String, val otherParties: List<Party>): FlowLogic<FairDecision>() {
 
     @Suspendable
     override fun call(): FairDecision {
 
         logger.info("Starting CreateDecision with '$decision'")
+        logger.info("${otherParties.size}")
         // We want at least 50% of the parties to accept the decision.
         // Fairness ♥
         val threshold: Int = ceil(otherParties.size.toDouble() / 2).toInt()
 
         val keys: List<PublicKey> = otherParties.map { it.owningKey }
 
+        logger.info("Creating composite key")
         // Create a composite key from the participant keys.
         val compositeKey = CompositeKey.Builder()
                 .addKey(ourIdentity.owningKey, weight = 1)
                 .addKeys(keys) // Weights default to 1
                 .build(threshold)
 
-        val everyone = otherParties.subList(0, otherParties.size)
+        val everyone = otherParties.toMutableList()
         everyone.add(ourIdentity)
+        logger.info("${otherParties.size}")
 
         val state = FairDecision(decision, everyone)
 
@@ -46,6 +49,7 @@ class CreateDecision(val decision: String, val otherParties: MutableList<Party>)
 
         val partStx = serviceHub.signInitialTransaction(txBuilder)
 
+        logger.info("Collecting signatures")
         // Collecting signatures
         val sessions = otherParties.map { initiateFlow(it) }
 
@@ -53,6 +57,7 @@ class CreateDecision(val decision: String, val otherParties: MutableList<Party>)
                 .map { it.sendAndReceive<Any>(partStx).unwrap { it } }
                 .filter { it is TransactionSignature } // We only care about TransactionSignature responses.
                 .map { it as TransactionSignature }
+
         val fullStx = partStx.withAdditionalSignatures(signatures)
 
         subFlow(FinalityFlow(fullStx))
@@ -73,6 +78,7 @@ class AcceptDecision(val otherPartySession: FlowSession): FlowLogic<Unit>() {
 
     @Suspendable
     override fun call() {
+        logger.info("receivining")
         otherPartySession.receive<SignedTransaction>().unwrap { partStx ->
             // We return either a `TransactionSignature` (if we're willing
             // to sign) or `false`.
@@ -87,7 +93,10 @@ class AcceptDecision(val otherPartySession: FlowSession): FlowLogic<Unit>() {
                 logger.info("Denying decision")
                 false
             }
+            logger.info("sending response")
             otherPartySession.send(response)
+            logger.info("sent response")
         }
+        logger.info("received but also done the stuff")
     }
 }

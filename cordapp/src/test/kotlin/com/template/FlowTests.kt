@@ -47,7 +47,7 @@ class FlowTests {
         val dec = "Play nep"
         val flow = CreateDecision(
                 dec,
-                mutableListOf(
+                listOf(
                         humanB.info.singleIdentity(),
                         humanC.info.singleIdentity()
                 )
@@ -63,7 +63,7 @@ class FlowTests {
         val dec = "Should we invest in Crypto?"
         val flow = CreateDecision(
                 dec,
-                mutableListOf(
+                listOf(
                         humanB.info.singleIdentity(),
                         humanC.info.singleIdentity()
                 )
@@ -72,9 +72,12 @@ class FlowTests {
             val future = humanA.startFlow(flow)
             mockNet.runNetwork()
             future.getOrThrow()
-        } catch (e: FlowException) {
-            assert(e.originalMessage?.startsWith("Contract verification failed") ?: false)
+        } catch (e: Exception) {
+            assert(e.message?.startsWith("Contract verification failed") ?: false)
+            return
         }
         fail()
     }
+
+
 }
